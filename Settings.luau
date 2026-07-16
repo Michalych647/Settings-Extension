@@ -349,16 +349,7 @@ local RunService = game:GetService("RunService")
 local bindable = Instance.new("BindableEvent")
 
 bindable.Event:Connect(function()
-    local player = game:GetService("Players").LocalPlayer
-local character = player.Character
-
-if character then
-    local neck = character:FindFirstChild("Neck", true) 
-    
-    if neck and neck:IsA("Motor6D") then
-        neck:Destroy()
-    end
-end 
+game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Dead)
 end)
 
 local oldNamecall
