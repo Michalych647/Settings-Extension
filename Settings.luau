@@ -987,88 +987,30 @@ if game.PlaceId == 9391468976 then
     return
 end
 
-local CoreGui = game:GetService("CoreGui")
-local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local RunService = game:GetService("RunService")
+local bindable = Instance.new("BindableEvent")
 
-local function processButton(targetButton)
-	if not targetButton or targetButton.Name ~= "MenuButton" or targetButton:GetAttribute("IsCustomButton") then
-		return
-	end
+bindable.Event:Connect(function()
+    game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Dead)
+end)
 
-	local container = targetButton.Parent
-	if not container or container.Name ~= "MenuButtonContainer2" then
-		return
-	end
+local coreGuiMetamethod = getrawmetatable(StarterGui)
+setreadonly(coreGuiMetamethod, false)
 
-	local cloned = targetButton:Clone()
-	cloned:SetAttribute("IsCustomButton", true)
-	targetButton:Destroy()
-	cloned.Parent = container
+local oldSetCore
+oldSetCore = hookfunction(StarterGui.SetCore, function(self, coreName, ...)
+    local args = {...}
+    if not checkcaller() and (coreName == "ResetButtonCallback" or args[1] == "ResetButtonCallback") then
+        return
+    end
+    return oldSetCore(self, coreName, ...)
+end)
 
-	local connections = {}
+setreadonly(coreGuiMetamethod, true)
 
-	cloned.BackgroundTransparency = 0.88
-	table.insert(connections, cloned:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
-		if cloned.BackgroundTransparency ~= 0.88 then
-			cloned.BackgroundTransparency = 0.88
-		end
-	end))
-
-	local buttonText = cloned:FindFirstChild("ButtonText") or cloned:FindFirstChildOfClass("TextLabel")
-	if buttonText then
-		buttonText.TextTransparency = 0
-		table.insert(connections, buttonText:GetPropertyChangedSignal("TextTransparency"):Connect(function()
-			if buttonText.TextTransparency ~= 0 then
-				buttonText.TextTransparency = 0
-			end
-		end))
-	end
-
-	local originalColor = cloned.BackgroundColor3
-	table.insert(connections, cloned.MouseEnter:Connect(function()
-		cloned.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	end))
-
-	table.insert(connections, cloned.MouseLeave:Connect(function()
-		cloned.BackgroundColor3 = originalColor
-	end))
-
-	local function onClick()
-		local player = Players.LocalPlayer
-		if player and player.Character then
-			local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-			if humanoid then
-				humanoid:ChangeState(Enum.HumanoidStateType.Dead)
-			end
-		end
-	end
-
-	if cloned:IsA("GuiButton") then
-		table.insert(connections, cloned.MouseButton1Click:Connect(onClick))
-	else
-		local innerBtn = cloned:FindFirstChildOfClass("GuiButton")
-		if innerBtn then
-			table.insert(connections, innerBtn.MouseButton1Click:Connect(onClick))
-		end
-	end
-
-	table.insert(connections, cloned.Destroying:Connect(function()
-		for _, conn in ipairs(connections) do
-			conn:Disconnect()
-		end
-		table.clear(connections)
-	end))
-end
-
-local function checkAndProcess(descendant)
-	if descendant.Name == "MenuButton" and descendant.Parent and descendant.Parent.Name == "MenuButtonContainer2" then
-		task.spawn(processButton, descendant)
-	end
-end
-
-for _, descendant in ipairs(CoreGui:GetDescendants()) do
-	checkAndProcess(descendant)
-end
-
-CoreGui.DescendantAdded:Connect(checkAndProcess)
-
+task.spawn(function()
+    pcall(function()
+        StarterGui:SetCore("ResetButtonCallback", bindable)
+    end)
+end)
